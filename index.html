@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Game</title>
+    <style>
+        body {
+            background: linear-gradient(to bottom, #a8e063, #56ab2f);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            flex-direction: column;
+        }
+        .hidden {
+            display: none;
+        }
+        .grid {
+            display: grid;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .card {
+            width: 80px;
+            height: 80px;
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            cursor: pointer;
+            border-radius: 10px;
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
+        }
+        .cover {
+            background-color: gray;
+        }
+        .start-button {
+            padding: 15px 30px;
+            background-color: white;
+            color: green;
+            font-size: 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        .timer {
+            font-size: 30px;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="timer" class="timer hidden">Temporizador: 30</div>
+    <button id="startButton" class="start-button">Jugar</button>
+    <div id="gameBoard" class="grid hidden"></div>
+    <script>
+        const symbols = ['⌚', '🛏️', '🥪', '🚲', '💊', '🩹' ,'☂️' ,'🎾'];
+        let cards = [];
+        let flipped = [];
+        let matched = [];
+        let currentLevel = 1;
+        let timeLeft = 30;
+        let timerInterval;
+
+        document.getElementById('startButton').addEventListener('click', () => startGame(6));
+        
+        function startGame(pairs) {
+            document.getElementById('startButton').classList.add('hidden');
+            document.getElementById('gameBoard').classList.remove('hidden');
+            document.getElementById('timer').classList.remove('hidden');
+            
+            let selectedSymbols = symbols.slice(0, pairs);
+            cards = [...selectedSymbols, ...selectedSymbols].sort(() => Math.random() - 0.5);
+            matched = [];
+            flipped = [];
+            
+            if (currentLevel === 1) {
+                timeLeft = 30;
+            } else {
+                timeLeft = 60;
+            }
+            
+            document.getElementById('timer').textContent = `Temporizador: ${timeLeft}`;
+            clearInterval(timerInterval);
+            timerInterval = setInterval(updateTimer, 1000);
+            
+            const board = document.getElementById('gameBoard');
+            board.innerHTML = '';
+            board.style.gridTemplateColumns = `repeat(${pairs === 6 ? 4 : 4}, 80px)`;
+            
+            cards.forEach((symbol, index) => {
+                const card = document.createElement('div');
+                card.classList.add('card', 'cover');
+                card.dataset.index = index;
+                card.addEventListener('click', flipCard);
+                board.appendChild(card);
+            });
+        }
+
+        function updateTimer() {
+            if (timeLeft > 0) {
+                timeLeft--;
+                document.getElementById('timer').textContent = `Temporizador: ${timeLeft}`;
+            } else {
+                clearInterval(timerInterval);
+                alert('¡Se acabó el tiempo! Se reiniciará el juego.');
+                location.reload();
+            }
+        }
+
+        function flipCard(event) {
+            let card = event.target;
+            let index = card.dataset.index;
+            if (flipped.length === 2 || matched.includes(index) || flipped.includes(index)) return;
+            
+            card.textContent = cards[index];
+            card.classList.remove('cover');
+            flipped.push(index);
+            
+            if (flipped.length === 2) {
+                setTimeout(checkMatch, 1000);
+            }
+        }
+        
+        function checkMatch() {
+            let [first, second] = flipped;
+            let cardsElements = document.querySelectorAll('.card');
+            if (cards[first] === cards[second]) {
+                matched.push(first, second);
+            } else {
+                cardsElements[first].textContent = '';
+                cardsElements[first].classList.add('cover');
+                cardsElements[second].textContent = '';
+                cardsElements[second].classList.add('cover');
+            }
+            flipped = [];
+            
+            if (matched.length === cards.length) {
+                setTimeout(nextLevel, 1000);
+            }
+        }
+        
+        function nextLevel() {
+            if (currentLevel === 1) {
+                currentLevel = 2;
+                startGame(8);
+            } else {
+                alert("¡Felicidades! Has completado el juego.");
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
