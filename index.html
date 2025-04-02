@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memory Card Game</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      background-color: #f9fafb;
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: linear-gradient(to top, #79fd9a, #169c16);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 500px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .header-item {
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    @media (min-width: 768px) {
+      .card-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    .card {
+      aspect-ratio: 1/1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background-color: #3b82f6;
+      color: white;
+      user-select: none;
+    }
+
+    .card.flipped, .card.matched {
+      background-color: white;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      transform: rotateY(180deg);
+    }
+
+    .card.matched {
+      opacity: 0.7;
+    }
+
+    .message-box {
+      text-align: center;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .message-box h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .game-over {
+      background-color: #ef4444;
+      color: white;
+    }
+
+    .game-won {
+      background-color: #d1fae5;
+      color: #065f46;
+    }
+
+    .button-container {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .button {
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid #d1d5db;
+      background-color: white;
+      color: #111827;
+      transition: background-color 0.2s;
+    }
+
+    .button:hover {
+      background-color: #f3f4f6;
+    }
+
+    .button.primary {
+      background-color: #3b82f6;
+      color: white;
+      border: none;
+    }
+
+    .button.primary:hover {
+      background-color: #2563eb;
+    }
+
+    .button.success {
+      background-color: #10b981;
+      color: white;
+      border: none;
+    }
+
+    .button.success:hover {
+      background-color: #059669;
+    }
+
+    .home-container {
+      text-align: center;
+      max-width: 28rem;
+    }
+
+    .home-title {
+      font-size: 2.25rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+    }
+
+    .home-description {
+      margin-bottom: 2rem;
+      color: #ffffff;
+    }
+
+    .start-button {
+      display: block;
+      width: 100%;
+      padding: 1.5rem;
+      font-size: 1.25rem;
+      background-color: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .start-button:hover {
+      background-color: #2563eb;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    /* Sound control button */
+    .sound-button {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: white;
+      color: #111827;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      z-index: 10;
+    }
+
+    .sound-button:hover {
+      background-color: #f3f4f6;
+    }
+    
+    /* Timer animation for last 10 seconds */
+    .timer-warning {
+      animation: pulse 1s infinite;
+      color: #ef4444;
+      font-weight: bold;
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Sound control button (solo uno) -->
+  <button id="sound-button" class="sound-button">🔊</button>
+
+  <!-- Audio elements -->
+  <!-- Sonido de clic en carta -->
+  <audio id="cardClickSound" src="./Sounds/a-crisp-sound-of-flipping-cards_v3.mp3" preload="auto"></audio>
+  
+  <!-- Música de fondo -->
+  <audio id="bgMusic" src="./Sounds/SpaceTheme.mp3" preload="auto" loop></audio>
+  
+  <!-- Música de cuenta regresiva -->
+  <audio id="countdownMusic" src="./Sounds/Simple_10_second_countdown_4K_with_beep.mp3" preload="auto"></audio>
+  
+  <!-- Sonido de victoria -->
+  <audio id="winSound" src="./Sounds/a-cheerful-fanfare-celebrating-game-victory_v3.mp3" preload="auto"></audio>
+  
+  <!-- Sonido de derrota -->
+  <audio id="gameOverSound" src="./Sounds/generate-a-trumpet-sound-for-card-game-expressing-sadness-upon-losing_v1.mp3" preload="auto"></audio>
+
+  <div id="home-screen" class="home-container">
+    <h1 class="home-title">Memory Card Game</h1>
+    <p class="home-description">Prueba tu memoria juntando dos cartas iguales!.Completa todos los niveles para ganar!!</p>
+    <button id="start-game" class="start-button">Iniciar juego</button>
+  </div>
+
+  <div id="game-container" class="container hidden">
+    <div class="header">
+      <div id="level" class="header-item">Nivel: 1</div>
+      <div id="timer" class="header-item">Tiempo: 30s</div>
+      <div id="pairs" class="header-item">Parejas: 0/6</div>
+    </div>
+
+    <div id="card-grid" class="card-grid">
+      <!-- Cards will be generated here -->
+    </div>
+
+    <div id="game-over" class="message-box game-over hidden">
+      <h2>Has perdido!</h2>
+      <p>Se te ha acabado el tiempo. Has perdido!</p>
+      <button id="restart-level" class="button primary" style="margin-top: 0.75rem;">Reiniciar nivel</button>
+    </div>
+
+    <div id="game-won" class="message-box game-won hidden">
+      <h2>Felicitaciones!</h2>
+      <p id="level-complete-message">Has completado el nivel 1!</p>
+      <div id="next-level-container" style="margin-top: 0.75rem;">
+        <button id="next-level" class="button success">Siguiente nivel</button>
+      </div>
+      <p id="all-complete-message" class="hidden" style="margin-top: 0.75rem; font-weight: 600;">Has completado todos los niveles!</p>
+    </div>
+
+    <div class="button-container">
+      <button id="restart-game" class="button">Reiniciar</button>
+      <button id="home-button" class="button">Volver</button>
+    </div>
+  </div>
+
+  <script>
+    // Game configuration
+    const levelConfig = {
+      1: { pairs: 6, time: 30, nextLevel: 2 },
+      2: { pairs: 8, time: 60, nextLevel: null }
+    };
+
+    // Game state
+    let currentLevel = 1;
+    let cards = [];
+    let flippedCards = [];
+    let matchedPairs = 0;
+    let timer = 0;
+    let timerInterval = null;
+    let gameOver = false;
+    let gameWon = false;
+    let countdownActive = false;
+
+    // Audio state
+    let isMuted = false;
+
+    // DOM elements
+    const homeScreen = document.getElementById('home-screen');
+    const gameContainer = document.getElementById('game-container');
+    const levelElement = document.getElementById('level');
+    const timerElement = document.getElementById('timer');
+    const pairsElement = document.getElementById('pairs');
+    const cardGrid = document.getElementById('card-grid');
+    const gameOverElement = document.getElementById('game-over');
+    const gameWonElement = document.getElementById('game-won');
+    const levelCompleteMessage = document.getElementById('level-complete-message');
+    const nextLevelContainer = document.getElementById('next-level-container');
+    const allCompleteMessage = document.getElementById('all-complete-message');
+
+    // Buttons
+    const startGameButton = document.getElementById('start-game');
+    const restartLevelButton = document.getElementById('restart-level');
+    const nextLevelButton = document.getElementById('next-level');
+    const restartGameButton = document.getElementById('restart-game');
+    const homeButton = document.getElementById('home-button');
+    const soundButton = document.getElementById('sound-button');
+
+    // Audio elements
+    const bgMusic = document.getElementById('bgMusic');
+    const countdownMusic = document.getElementById('countdownMusic');
+    const cardClickSound = document.getElementById('cardClickSound');
+    const winSound = document.getElementById('winSound');
+    const gameOverSound = document.getElementById('gameOverSound');
+
+    // Audio functions
+    function playSound(sound) {
+      if (!isMuted && sound) {
+        sound.currentTime = 0;
+        sound.play().catch(e => console.log("Audio play failed:", e));
+      }
+    }
+
+    function toggleMute() {
+      isMuted = !isMuted;
+      
+      if (isMuted) {
+        bgMusic.pause();
+        countdownMusic.pause();
+        soundButton.textContent = "🔇";
+      } else {
+        if (!gameOver && !gameWon && !homeScreen.classList.contains('hidden')) {
+          if (timer <= 10 && !countdownActive) {
+            countdownMusic.play().catch(e => console.log("Audio play failed:", e));
+          } else {
+            bgMusic.play().catch(e => console.log("Audio play failed:", e));
+          }
+        }
+        soundButton.textContent = "🔊";
+      }
+    }
+
+    // Switch to countdown music
+    function startCountdownMusic() {
+      if (isMuted || countdownActive) return;
+      
+      countdownActive = true;
+      countdownMusic.currentTime = 0;
+      countdownMusic.play().catch(e => console.log("Audio play failed:", e));
+      
+      // Añadir clase de animación al temporizador
+      timerElement.classList.add('timer-warning');
+    }
+
+    // Switch back to normal music
+    function stopCountdownMusic() {
+      if (isMuted) return;
+      
+      countdownActive = false;
+      countdownMusic.pause();
+      bgMusic.play().catch(e => console.log("Audio play failed:", e));
+      
+      // Quitar clase de animación al temporizador
+      timerElement.classList.remove('timer-warning');
+    }
+
+    // Initialize the game
+    function initializeGame() {
+      // Reset game state
+      cards = [];
+      flippedCards = [];
+      matchedPairs = 0;
+      gameOver = false;
+      gameWon = false;
+      countdownActive = false;
+      
+      // Clear previous timer
+      if (timerInterval) {
+        clearInterval(timerInterval);
+      }
+      
+      // Get level configuration
+      const { pairs, time } = levelConfig[currentLevel];
+      timer = time;
+      
+      // Update UI
+      levelElement.textContent = `Nivel: ${currentLevel}`;
+      timerElement.textContent = `Tiempo: ${timer}s`;
+      timerElement.classList.remove('timer-warning');
+      pairsElement.textContent = `Parejas: ${matchedPairs}/${pairs}`;
+      
+      // Hide messages
+      gameOverElement.classList.add('hidden');
+      gameWonElement.classList.add('hidden');
+      
+      // Generate cards
+      generateCards(pairs);
+      
+      // Start timer
+      startTimer();
+      
+      // Reset and play background music
+      countdownMusic.pause();
+      countdownMusic.currentTime = 0;
+      
+      if (!isMuted) {
+        bgMusic.currentTime = 0;
+        bgMusic.play().catch(e => console.log("Audio play failed:", e));
+      }
+    }
+
+    // Generate cards for the game
+    function generateCards(pairs) {
+      // Clear previous cards
+      cardGrid.innerHTML = '';
+      
+      // Available emojis
+      const emojis = ["⌚", "🛏️", "🥪", "🚲", "💊", "🩹", "☂️", "🎾"];
+      const selectedEmojis = emojis.slice(0, pairs);
+      
+      // Create card pairs
+      let cardPairs = [];
+      selectedEmojis.forEach((emoji, index) => {
+        cardPairs.push({ id: index * 2, emoji, flipped: false, matched: false });
+        cardPairs.push({ id: index * 2 + 1, emoji, flipped: false, matched: false });
+      });
+      
+      // Shuffle cards
+      cards = shuffleArray(cardPairs);
+      
+      // Create card elements
+      cards.forEach(card => {
+        const cardElement = document.createElement('div');
+        cardElement.className = 'card';
+        cardElement.dataset.id = card.id;
+        cardElement.addEventListener('click', () => handleCardClick(card.id));
+        cardGrid.appendChild(cardElement);
+      });
+    }
+
+    // Shuffle array (Fisher-Yates algorithm)
+    function shuffleArray(array) {
+      const newArray = [...array];
+      for (let i = newArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+      }
+      return newArray;
+    }
+
+    // Start the timer
+    function startTimer() {
+      timerInterval = setInterval(() => {
+        if (timer > 0 && !gameWon) {
+          timer--;
+          timerElement.textContent = `Tiempo: ${timer}s`;
+          
+          // Comprobar si quedan 10 segundos para cambiar la música
+          if (timer === 10 && !gameWon) {
+            startCountdownMusic();
+          }
+          
+        } else if (timer === 0 && !gameWon) {
+          clearInterval(timerInterval);
+          handleGameOver();
+        }
+      }, 1000);
+    }
+
+    // Handle card click
+    function handleCardClick(id) {
+      if (gameOver || gameWon) return;
+      if (flippedCards.length === 2) return;
+      
+      const card = cards.find(c => c.id === id);
+      if (card.flipped || card.matched) return;
+      
+      // Reproducir sonido de clic en carta
+      playSound(cardClickSound);
+      
+      // Flip the card
+      card.flipped = true;
+      updateCardDisplay(id);
+      flippedCards.push(id);
+      
+      // Check for match if two cards are flipped
+      if (flippedCards.length === 2) {
+        const firstCardId = flippedCards[0];
+        const secondCardId = flippedCards[1];
+        
+        const firstCard = cards.find(c => c.id === firstCardId);
+        const secondCard = cards.find(c => c.id === secondCardId);
+        
+        if (firstCard.emoji === secondCard.emoji) {
+          // Match found
+          setTimeout(() => {
+            firstCard.matched = true;
+            secondCard.matched = true;
+            updateCardDisplay(firstCardId);
+            updateCardDisplay(secondCardId);
+            
+            // No tenemos un sonido específico para match, podríamos usar el cardClickSound
+            playSound(cardClickSound);
+            
+            matchedPairs++;
+            pairsElement.textContent = `Parejas: ${matchedPairs}/${levelConfig[currentLevel].pairs}`;
+            flippedCards = [];
+            
+            // Check if all pairs are matched
+            if (matchedPairs === levelConfig[currentLevel].pairs) {
+              handleGameWon();
+            }
+          }, 500);
+        } else {
+          // No match
+          setTimeout(() => {
+            firstCard.flipped = false;
+            secondCard.flipped = false;
+            updateCardDisplay(firstCardId);
+            updateCardDisplay(secondCardId);
+            
+            // No tenemos un sonido específico para mismatch, podríamos usar el cardClickSound
+            playSound(cardClickSound);
+            
+            flippedCards = [];
+          }, 1000);
+        }
+      }
+    }
+
+    // Update card display
+    function updateCardDisplay(id) {
+      const card = cards.find(c => c.id === id);
+      const cardElement = document.querySelector(`.card[data-id="${id}"]`);
+      
+      if (card.matched) {
+        cardElement.className = 'card matched';
+        cardElement.textContent = card.emoji;
+      } else if (card.flipped) {
+        cardElement.className = 'card flipped';
+        cardElement.textContent = card.emoji;
+      } else {
+        cardElement.className = 'card';
+        cardElement.textContent = '';
+      }
+    }
+
+    // Handle game over
+    function handleGameOver() {
+      bgMusic.pause();
+      gameOver = true;
+      gameOverElement.classList.remove('hidden');
+      clearInterval(timerInterval);
+      
+      // Play game over sound
+      playSound(gameOverSound);
+      
+      // Pause all music
+      bgMusic.pause();
+      countdownMusic.pause();
+      timerElement.classList.remove('timer-warning');
+    }
+
+    // Handle game won
+    function handleGameWon() {
+      gameWon = true;
+      clearInterval(timerInterval);
+      
+      levelCompleteMessage.textContent = `Has completado el nivel ${currentLevel}!`;
+      
+      const nextLevel = levelConfig[currentLevel].nextLevel;
+      if (nextLevel) {
+        nextLevelContainer.classList.remove('hidden');
+        allCompleteMessage.classList.add('hidden');
+      } else {
+        nextLevelContainer.classList.add('hidden');
+        allCompleteMessage.classList.remove('hidden');
+      }
+      
+      gameWonElement.classList.remove('hidden');
+      
+      // Play win sound
+      playSound(winSound);
+      
+      // Pause all music
+      countdownMusic.pause();
+      timerElement.classList.remove('timer-warning');
+    }
+
+    // Go to next level
+    function goToNextLevel() {
+      const nextLevel = levelConfig[currentLevel].nextLevel;
+      if (nextLevel) {
+        currentLevel = nextLevel;
+        initializeGame();
+      }
+    }
+
+    // Show home screen
+    function showHomeScreen() {
+      homeScreen.classList.remove('hidden');
+      gameContainer.classList.add('hidden');
+      clearInterval(timerInterval);
+      
+      // Pause all music
+      bgMusic.pause();
+      countdownMusic.pause();
+      timerElement.classList.remove('timer-warning');
+    }
+
+    // Show game screen
+    function showGameScreen() {
+      homeScreen.classList.add('hidden');
+      gameContainer.classList.remove('hidden');
+      currentLevel = 1;
+      initializeGame();
+    }
+
+    // Event listeners
+    startGameButton.addEventListener('click', showGameScreen);
+    restartLevelButton.addEventListener('click', initializeGame);
+    nextLevelButton.addEventListener('click', goToNextLevel);
+    restartGameButton.addEventListener('click', initializeGame);
+    homeButton.addEventListener('click', showHomeScreen);
+    soundButton.addEventListener('click', toggleMute);
+
+    // Initialize home screen on load
+    showHomeScreen();
+  </script>
+</body>
+</html>
